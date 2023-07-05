@@ -31,10 +31,10 @@ function handleRequest(req, res) {
     })
     req.on("end", () => {
       let postbodyBuffer = Buffer.concat(postbody);
-      let postbodyJson = JSON.parse(postbodyBuffer.toString());
-
+      
       // convert
       if (req.url == "/v1/completions") {
+        let postbodyJson = JSON.parse(postbodyBuffer.toString());
         postbodyJson = convertPostbody(postbodyJson);
         postbodyBuffer = Buffer.from(JSON.stringify(postbodyJson));
         options.path = "/v1/chat/completions";
