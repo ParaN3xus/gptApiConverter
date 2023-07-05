@@ -1,9 +1,12 @@
+const version = "v0.0.1";
+
 const http = require("http");
 const https = require("https");
 const fs = require("fs");
 const yargs = require("yargs/yargs")
 const { hideBin } = require("yargs/helpers")
 const { Mutex } = require("async-mutex");
+const { exit } = require("process");
 
 function handleRequest(req, res) {
     writeLog(`Received a request to ${req.url}.`);
@@ -127,6 +130,17 @@ function writeLog(message) {
 const logMutex = new Mutex();
 const server = http.createServer();
 const argv = yargs(hideBin(process.argv))
+    .option("help", {
+        alias: "h",
+        type: "boolean",
+        description: "Show help"
+    })
+    .version(false)
+    .option("version", {
+        alias: "v",
+        type: "boolean",
+        description: "Show version number"
+    })
     .option("port", {
         alias: "p",
         type: "int",
@@ -146,6 +160,12 @@ const argv = yargs(hideBin(process.argv))
         description: "Path of log file, blank for console"
     })
     .parse();
+
+    
+if(argv.version){
+    console.log(version);
+    exit()
+}
 
 server.on("request", handleRequest);
 server.listen(argv.port, () => {
