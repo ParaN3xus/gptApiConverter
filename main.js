@@ -6,10 +6,10 @@ const { hideBin } = require("yargs/helpers")
 const { Mutex } = require("async-mutex");
 
 function handleRequest(req, res) {
-    
+    writeLog(`Received a request to ${req.url}.`);
     let options = {
         "method": req.method,
-        "hostname": "ai.fakeopen.com",
+        "hostname": argv.target,
         "port": "443",
         "path": req.url,
         "headers": {
@@ -32,6 +32,7 @@ function handleRequest(req, res) {
             postbodyJson = convertPostbody(postbodyJson);
             postbodyBuffer = Buffer.from(JSON.stringify(postbodyJson));
             options.path = "/v1/chat/completions";
+            writeLog("Converted the request.");
         }
 
         // send request
@@ -44,16 +45,21 @@ function handleRequest(req, res) {
 
             // handle response
             response.on("end", () => {
+                writeLog("Received a response.");
+
                 let responsebodyBuffer = Buffer.concat(responsebody);
                 // convert
                 if (req.url == "/v1/completions") {
                     let responsebodyJson = convertResponsebody(responsebodyBuffer);
                     responsebodyBuffer = Buffer.from(JSON.stringify(responsebodyJson));
+                    writeLog(`Converted the response.`);
                 }
                 // send response
                 res.end(responsebodyBuffer);
+                writeLog(`Sent the response as ${req.url}.`);
             });
         });
+        writeLog(`Sent the request to ${argv.target}.`);
 
         request.write(postbodyBuffer);
         request.end();
@@ -124,6 +130,12 @@ const argv = yargs(hideBin(process.argv))
         type: "int",
         default: 23345,
         description: "Port to bind on"
+    })
+    .option("target", {
+        alias: "t",
+        type: "string",
+        default: "ai.fakeopen.com",
+        description: "Destination server for forwarding"
     })
     .option("log", {
         alias: "l",
