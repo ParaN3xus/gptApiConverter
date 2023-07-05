@@ -20,7 +20,7 @@ function handleRequest(req, res) {
       "path": req.url,
       "headers": {
         "Authorization": req.headers.authorization, // fuck you lower case
-        "Content-Type": req.headers["content-type"]
+        "Content-Type": "application/json"
       }
     }
 
@@ -31,7 +31,7 @@ function handleRequest(req, res) {
     })
     req.on("end", () => {
       let postbodyBuffer = Buffer.concat(postbody);
-      
+
       // convert
       if (req.url == "/v1/completions") {
         let postbodyJson = JSON.parse(postbodyBuffer.toString());
