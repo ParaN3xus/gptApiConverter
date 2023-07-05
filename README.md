@@ -2,11 +2,11 @@
 
 A proxy server to convert `/completions` API to `/chat/completions` API.
 
-## purpose
+## Purpose
 
 Free GPT API services like `https://ai.fakeopen.com/` or ChatGPT-to-API don't support ~~legacy ~~ API like `/completions`, so you can't just replace the host of OpenAI and use GPT-based softwares without modifying other code. This project build a proxy server to convert `/completions` API to `/chat/completions` API so you can easily replace backend of those softwares and use them for free.
 
-## usage
+## Usage
 
 ```sh
 $ node main.js -h
