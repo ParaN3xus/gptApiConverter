@@ -30,52 +30,64 @@ function handleRequest(req, res) {
       postbody.push(chunk);
     })
     req.on("end", () => {
-      let postbodyBuffer = Buffer.concat(postbody);
+      try {
+        let postbodyBuffer = Buffer.concat(postbody);
 
-      // convert
-      if (req.url == "/v1/completions") {
-        let postbodyJson = JSON.parse(postbodyBuffer.toString());
-        postbodyJson = convertPostbody(postbodyJson);
-        postbodyBuffer = Buffer.from(JSON.stringify(postbodyJson));
-        options.path = "/v1/chat/completions";
-        writeLog("Converted the request.");
-      }
+        // convert
+        if (req.url == "/v1/completions") {
+          let postbodyJson = JSON.parse(postbodyBuffer.toString());
+          postbodyJson = convertPostbody(postbodyJson);
+          postbodyBuffer = Buffer.from(JSON.stringify(postbodyJson));
+          options.path = "/v1/chat/completions";
+          writeLog("Converted the request.");
+        }
 
-      // send request
-      let request = requestModule.request(options, (response) => {
-        // response received
-        let responsebody = [];
-        response.on("data", (chunk) => {
-          responsebody.push(chunk);
-        });
+        // send request
+        let request = requestModule.request(options, (response) => {
+          try {
+            // response received
+            let responsebody = [];
+            response.on("data", (chunk) => {
+              responsebody.push(chunk);
+            });
 
-        // handle response
-        response.on("end", () => {
-          writeLog("Received a response.");
+            // handle response
+            response.on("end", () => {
+              try {
+                writeLog("Received a response.");
 
-          let responsebodyBuffer = Buffer.concat(responsebody);
-          // convert
-          if (req.url == "/v1/completions") {
-            let responsebodyJson = convertResponsebody(responsebodyBuffer);
-            responsebodyBuffer = Buffer.from(JSON.stringify(responsebodyJson));
-            writeLog(`Converted the response.`);
+                let responsebodyBuffer = Buffer.concat(responsebody);
+                // convert
+                if (req.url == "/v1/completions") {
+                  let responsebodyJson = convertResponsebody(responsebodyBuffer);
+                  responsebodyBuffer = Buffer.from(JSON.stringify(responsebodyJson));
+                  writeLog(`Converted the response.`);
+                }
+                // send response
+                res.headers = response.headers;
+                res.end(responsebodyBuffer);
+                writeLog(`Sent the response as ${req.url}.`);
+              } catch (error) {
+                writeLog(`Error processing request: ${error}`)
+              }
+            });
+          } catch (error) {
+            writeLog(`Error processing request: ${error}`)
           }
-          // send response
-          res.headers = response.headers;
-          res.end(responsebodyBuffer);
-          writeLog(`Sent the response as ${req.url}.`);
         });
-      });
 
-      // handle error
-      request.on("error", (error) => {
-        `Error waiting for response: ${error}`
-      })
+        // handle error
+        request.on("error", (error) => {
+          `Error waiting for response: ${error}`
+        })
 
-      writeLog(`Sent the request to ${argv.target}.`);
+        writeLog(`Sent the request to ${argv.target}.`);
 
-      request.write(postbodyBuffer);
-      request.end();
+        request.write(postbodyBuffer);
+        request.end();
+      } catch (error) {
+        writeLog(`Error processing request: ${error}`)
+      }
     });
   } catch (error) {
     writeLog(`Error processing request: ${error}`)
