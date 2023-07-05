@@ -1,8 +1,12 @@
 const http = require("http");
 const https = require("https");
-const { buffer } = require("stream/consumers");
+const fs = require("fs");
+const yargs = require("yargs/yargs")
+const { hideBin } = require("yargs/helpers")
+const { Mutex } = require("async-mutex");
 
 function handleRequest(req, res) {
+    
     let options = {
         "method": req.method,
         "hostname": "ai.fakeopen.com",
@@ -19,7 +23,7 @@ function handleRequest(req, res) {
     req.on("data", chunk => {
         postbody.push(chunk);
     })
-    req.on('end', () => {
+    req.on("end", () => {
         let postbodyBuffer = Buffer.concat(postbody);
         let postbodyJson = JSON.parse(postbodyBuffer.toString());
 
@@ -34,10 +38,11 @@ function handleRequest(req, res) {
         let request = https.request(options, (response) => {
             // response received
             let responsebody = [];
-            response.on('data', (chunk) => {
+            response.on("data", (chunk) => {
                 responsebody.push(chunk);
             });
-            
+
+            // handle response
             response.on("end", () => {
                 let responsebodyBuffer = Buffer.concat(responsebody);
                 // convert
@@ -49,7 +54,7 @@ function handleRequest(req, res) {
                 res.end(responsebodyBuffer);
             });
         });
-        
+
         request.write(postbodyBuffer);
         request.end();
     });
@@ -92,8 +97,43 @@ function convertResponsebody(responsebodyBuffer) {
     return newResponsebodyJson;
 }
 
+function writeLog(message) {
+    let date = (new Date()).toISOString();
+    let logStr = `[${date}] ${message}`;
+    if (argv.log == "") {
+        console.log(logStr);
+    }
+    else {
+        logMutex.acquire().then((release) => {
+            try {
+                fs.appendFileSync(argv.log, logStr + '\n', "utf8");
+            } catch (error) {
+                writeLog(`Error adding line to file: ${error}`);
+            } finally {
+                release();
+            }
+        });
+    }
+}
+
+const logMutex = new Mutex();
 const server = http.createServer();
-server.on('request', handleRequest);
-server.listen(3000, () => {
-    console.log("running");
+const argv = yargs(hideBin(process.argv))
+    .option("port", {
+        alias: "p",
+        type: "int",
+        default: 23345,
+        description: "Port to bind on"
+    })
+    .option("log", {
+        alias: "l",
+        type: "string",
+        default: "",
+        description: "Path of log file, blank for console"
+    })
+    .parse();
+
+server.on("request", handleRequest);
+server.listen(argv.port, () => {
+    writeLog(`server running on port ${argv.port}.`);
 });
