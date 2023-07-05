@@ -9,66 +9,76 @@ const { Mutex } = require("async-mutex");
 const { exit } = require("process");
 
 function handleRequest(req, res) {
-  writeLog(`Received a request to ${req.url}.`);
-  let parsedUrl = new URL(argv.target);
-  let requestModule = parsedUrl.protocol == "http:" ? http : https
-  let options = {
-    "method": req.method,
-    "hostname": parsedUrl.hostname,
-    "port": parsedUrl.port == "" ? (parsedUrl.protocol == "http:" ? "80" : "443") : parsedUrl.port,
-    "path": req.url,
-    "headers": {
-      "Authorization": req.headers.authorization, // fuck you lower case
-      "Content-Type": req.headers["content-type"]
-    }
-  }
-
-  // get post data
-  let postbody = [];
-  req.on("data", chunk => {
-    postbody.push(chunk);
-  })
-  req.on("end", () => {
-    let postbodyBuffer = Buffer.concat(postbody);
-    let postbodyJson = JSON.parse(postbodyBuffer.toString());
-
-    // convert
-    if (req.url == "/v1/completions") {
-      postbodyJson = convertPostbody(postbodyJson);
-      postbodyBuffer = Buffer.from(JSON.stringify(postbodyJson));
-      options.path = "/v1/chat/completions";
-      writeLog("Converted the request.");
+  try {
+    writeLog(`Received a request to ${req.url}.`);
+    let parsedUrl = new URL(argv.target);
+    let requestModule = parsedUrl.protocol == "http:" ? http : https
+    let options = {
+      "method": req.method,
+      "hostname": parsedUrl.hostname,
+      "port": parsedUrl.port == "" ? (parsedUrl.protocol == "http:" ? "80" : "443") : parsedUrl.port,
+      "path": req.url,
+      "headers": {
+        "Authorization": req.headers.authorization, // fuck you lower case
+        "Content-Type": req.headers["content-type"]
+      }
     }
 
-    // send request
-    let request = requestModule.request(options, (response) => {
-      // response received
-      let responsebody = [];
-      response.on("data", (chunk) => {
-        responsebody.push(chunk);
+    // get post data
+    let postbody = [];
+    req.on("data", chunk => {
+      postbody.push(chunk);
+    })
+    req.on("end", () => {
+      let postbodyBuffer = Buffer.concat(postbody);
+      let postbodyJson = JSON.parse(postbodyBuffer.toString());
+
+      // convert
+      if (req.url == "/v1/completions") {
+        postbodyJson = convertPostbody(postbodyJson);
+        postbodyBuffer = Buffer.from(JSON.stringify(postbodyJson));
+        options.path = "/v1/chat/completions";
+        writeLog("Converted the request.");
+      }
+
+      // send request
+      let request = requestModule.request(options, (response) => {
+        // response received
+        let responsebody = [];
+        response.on("data", (chunk) => {
+          responsebody.push(chunk);
+        });
+
+        // handle response
+        response.on("end", () => {
+          writeLog("Received a response.");
+
+          let responsebodyBuffer = Buffer.concat(responsebody);
+          // convert
+          if (req.url == "/v1/completions") {
+            let responsebodyJson = convertResponsebody(responsebodyBuffer);
+            responsebodyBuffer = Buffer.from(JSON.stringify(responsebodyJson));
+            writeLog(`Converted the response.`);
+          }
+          // send response
+          res.end(responsebodyBuffer);
+          writeLog(`Sent the response as ${req.url}.`);
+        });
       });
 
-      // handle response
-      response.on("end", () => {
-        writeLog("Received a response.");
+      // handle error
+      request.on("error", (error) => {
+        `Error waiting for response: ${error}`
+      })
 
-        let responsebodyBuffer = Buffer.concat(responsebody);
-        // convert
-        if (req.url == "/v1/completions") {
-          let responsebodyJson = convertResponsebody(responsebodyBuffer);
-          responsebodyBuffer = Buffer.from(JSON.stringify(responsebodyJson));
-          writeLog(`Converted the response.`);
-        }
-        // send response
-        res.end(responsebodyBuffer);
-        writeLog(`Sent the response as ${req.url}.`);
-      });
+      writeLog(`Sent the request to ${argv.target}.`);
+
+      request.write(postbodyBuffer);
+      request.end();
     });
-    writeLog(`Sent the request to ${argv.target}.`);
-
-    request.write(postbodyBuffer);
-    request.end();
-  });
+  } catch (error) {
+    writeLog(`Error processing request: ${error}`)
+  }
 }
 
 function convertPostbody(postbodyJson) {
