@@ -19,8 +19,8 @@ function handleRequest(req, res) {
       "port": parsedUrl.port == "" ? (parsedUrl.protocol == "http:" ? "80" : "443") : parsedUrl.port,
       "path": req.url,
       "headers": {
-        "Authorization": req.headers.authorization, // fuck you lower case
-        "Content-Type": "application/json"
+        "Authorization": req.headers.authorization || "", // fuck you lower case
+        "Content-Type": req.headers["content-type"] || ""
       }
     }
 
