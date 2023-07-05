@@ -7,10 +7,12 @@ const { Mutex } = require("async-mutex");
 
 function handleRequest(req, res) {
     writeLog(`Received a request to ${req.url}.`);
+    let parsedUrl = new URL(argv.target);
+    let requestModule = parsedUrl.protocol == "http:" ? http : https
     let options = {
         "method": req.method,
-        "hostname": argv.target,
-        "port": "443",
+        "hostname": parsedUrl.hostname,
+        "port": parsedUrl.port == "" ? (parsedUrl.protocol == "http:" ? "80" : "443") : parsedUrl.port,
         "path": req.url,
         "headers": {
             "Authorization": req.headers.authorization,
@@ -36,7 +38,7 @@ function handleRequest(req, res) {
         }
 
         // send request
-        let request = https.request(options, (response) => {
+        let request = requestModule.request(options, (response) => {
             // response received
             let responsebody = [];
             response.on("data", (chunk) => {
@@ -134,8 +136,8 @@ const argv = yargs(hideBin(process.argv))
     .option("target", {
         alias: "t",
         type: "string",
-        default: "ai.fakeopen.com",
-        description: "Destination server for forwarding"
+        default: "https://ai.fakeopen.com",
+        description: "Destination server url for forwarding"
     })
     .option("log", {
         alias: "l",
