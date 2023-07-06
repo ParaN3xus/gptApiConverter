@@ -64,7 +64,7 @@ function handleRequest(req, res) {
                   writeLog(`Converted the response.`);
                 }
                 // send response
-                res.headers = response.headers;
+                res.writeHead(response.statusCode, response.headers);
                 res.end(responsebodyBuffer);
                 writeLog(`Sent the response as ${req.url}.`);
               } catch (error) {
