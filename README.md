@@ -25,6 +25,4 @@ Options:
 
 * [ ] Https support: Currently using nginx.
 
-* [ ] Fix randomly stuttering: Difficult to find out why or debug... I need your help.
-
 * [ ] Custom model mapping: There's currently no such requirement.
