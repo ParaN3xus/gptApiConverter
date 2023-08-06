@@ -41,40 +41,54 @@ function handleRequest(req, res) {
           options.path = "/v1/chat/completions";
           writeLog("Converted the request.");
         }
+        else if(req.url == "/v1/chat/completions")
+        {
+          // send request
+          let request = requestModule.request(options, (response) => {
+            try {
+              // response received
+              let responsebody = [];
+              response.on("data", (chunk) => {
+                responsebody.push(chunk);
+              });
 
-        // send request
-        let request = requestModule.request(options, (response) => {
-          try {
-            // response received
-            let responsebody = [];
-            response.on("data", (chunk) => {
-              responsebody.push(chunk);
-            });
+              // handle response
+              response.on("end", () => {
+                try {
+                  writeLog("Received a response.");
 
-            // handle response
-            response.on("end", () => {
-              try {
-                writeLog("Received a response.");
-
-                let responsebodyBuffer = Buffer.concat(responsebody);
-                // convert
-                if (req.url == "/v1/completions") {
-                  let responsebodyJson = convertResponsebody(responsebodyBuffer);
-                  responsebodyBuffer = Buffer.from(JSON.stringify(responsebodyJson));
-                  writeLog(`Converted the response.`);
+                  let responsebodyBuffer = Buffer.concat(responsebody);
+                  // convert
+                  if (req.url == "/v1/completions") {
+                    let responsebodyJson = convertResponsebody(responsebodyBuffer);
+                    responsebodyBuffer = Buffer.from(JSON.stringify(responsebodyJson));
+                    writeLog(`Converted the response.`);
+                  }
+                  // send response
+                  res.writeHead(response.statusCode, response.headers);
+                  res.end(responsebodyBuffer);
+                  writeLog(`Sent the response as ${req.url}.`);
+                } catch (error) {
+                  writeLog(`Error processing request: ${error}`)
                 }
-                // send response
-                res.writeHead(response.statusCode, response.headers);
-                res.end(responsebodyBuffer);
-                writeLog(`Sent the response as ${req.url}.`);
-              } catch (error) {
-                writeLog(`Error processing request: ${error}`)
-              }
-            });
+              });
+            } catch (error) {
+              writeLog(`Error processing request: ${error}`)
+            }
+          });
+        }
+        else // not gpt api, maybe dalle
+        {
+          try {
+            writeLog("Received a non-gpt request.");
+            // send response
+            res.writeHead(400);
+            res.end(0);
+            writeLog(`denied.`);
           } catch (error) {
             writeLog(`Error processing request: ${error}`)
           }
-        });
+        }
 
         // handle error
         request.on("error", (error) => {
