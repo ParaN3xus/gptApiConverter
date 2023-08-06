@@ -1,4 +1,4 @@
-const version = "v0.0.1";
+const version = "v0.0.2";
 
 const http = require("http");
 const https = require("https");
