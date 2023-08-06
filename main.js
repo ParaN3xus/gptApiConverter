@@ -75,6 +75,15 @@ function handleRequest(req, res) {
             } catch (error) {
               writeLog(`Error processing request: ${error}`)
             }
+            // handle error
+            request.on("error", (error) => {
+              `Error waiting for response: ${error}`
+        })
+
+        writeLog(`Sent the request to ${argv.target}.`);
+
+        request.write(postbodyBuffer);
+        request.end();
           });
         }
         else // not gpt api, maybe dalle
@@ -90,15 +99,6 @@ function handleRequest(req, res) {
           }
         }
 
-        // handle error
-        request.on("error", (error) => {
-          `Error waiting for response: ${error}`
-        })
-
-        writeLog(`Sent the request to ${argv.target}.`);
-
-        request.write(postbodyBuffer);
-        request.end();
       } catch (error) {
         writeLog(`Error processing request: ${error}`)
       }
