@@ -33,17 +33,19 @@ function handleRequest(req, res) {
       try {
         let postbodyBuffer = Buffer.concat(postbody);
 
+        gpt = req.url == "/v1/completions" || req.url == "/v1/chat/completions"
+
         // convert
-        if (req.url == "/v1/completions") {
+        if (gpt && req.url == "/v1/completions") {
           let postbodyJson = JSON.parse(postbodyBuffer.toString());
           postbodyJson = convertPostbody(postbodyJson);
           postbodyBuffer = Buffer.from(JSON.stringify(postbodyJson));
           options.path = "/v1/chat/completions";
           writeLog("Converted the request.");
         }
-        else if(req.url == "/v1/chat/completions")
-        {
-          // send request
+
+        // send request
+        if (gpt) {
           let request = requestModule.request(options, (response) => {
             try {
               // response received
@@ -60,7 +62,7 @@ function handleRequest(req, res) {
                   let responsebodyBuffer = Buffer.concat(responsebody);
                   // convert
                   if (req.url == "/v1/completions") {
-                    let responsebodyJson = convertResponsebody(responsebodyBuffer);
+                    let responsebodyJson = response.statusCode == 200 ? convertResponsebody(responsebodyBuffer) : responsebodyBuffer.toString();
                     responsebodyBuffer = Buffer.from(JSON.stringify(responsebodyJson));
                     writeLog(`Converted the response.`);
                   }
@@ -75,29 +77,23 @@ function handleRequest(req, res) {
             } catch (error) {
               writeLog(`Error processing request: ${error}`)
             }
-            // handle error
-            request.on("error", (error) => {
-              `Error waiting for response: ${error}`
-        })
-
-        writeLog(`Sent the request to ${argv.target}.`);
-
-        request.write(postbodyBuffer);
-        request.end();
           });
+          // handle error
+          request.on("error", (error) => {
+            `Error waiting for response: ${error}`
+          })
+
+          writeLog(`Sent the request to ${argv.target}.`);
+
+          request.write(postbodyBuffer);
+          request.end();
+
+        } else {
+          writeLog("denied");
+          res.writeHead(403);
+          res.end();
         }
-        else // not gpt api, maybe dalle
-        {
-          try {
-            writeLog("Received a non-gpt request.");
-            // send response
-            res.writeHead(400);
-            res.end(0);
-            writeLog(`denied.`);
-          } catch (error) {
-            writeLog(`Error processing request: ${error}`)
-          }
-        }
+
 
       } catch (error) {
         writeLog(`Error processing request: ${error}`)
